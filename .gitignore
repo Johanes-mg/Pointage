@@ -1,0 +1,35 @@
+# Ignore les dossiers de compilation et de génération .NET
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+
+# Ignore les dossiers d'installation générés (ex: Inno Setup)
+Installeur/
+*.exe
+*.msi
+
+# Ignore la base de données SQLite locale et ses fichiers temporaires
+*.db
+*.db-shm
+*.db-wal
+
+# Ignore les fichiers temporaires et sauvegardes de code
+code_source.txt
+*.log
+
+# Ignore les fichiers de configuration utilisateur / IDE
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+.vs/
+*.user
+*.useroslog
+*.suo
+
+# Ignore les fichiers de symboles de débogage et packages locaux
+*.pdb
+*.nupkg
+
+# Ignore les fichiers système Windows
+Thumbs.db
+Desktop.ini
