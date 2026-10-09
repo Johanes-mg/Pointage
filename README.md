@@ -35,6 +35,34 @@ Application de gestion de pointage de présence du personnel développée en **C
 
 ---
 
+## Aperçu
+
+### Page de connexion et création
+
+![Connexion](captures/pointage_1.png)
+
+### Accueil
+
+![Accueil](captures/pointage_2.png)
+
+### Page de personnels
+
+![Personnel](captures/pointage_3.png)
+
+### Page de pointage
+
+![Pointage](captures/pointage_4.png)
+
+### Page de pointage
+
+![Pointage](captures/pointage_5.png)
+
+### Page de bilan des personnel
+
+![Profil clair](captures/pointage_6.png)
+
+---
+
 ## 📁 Structure du Projet
 
 ```text
