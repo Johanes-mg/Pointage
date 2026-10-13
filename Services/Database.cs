@@ -45,6 +45,9 @@ public static class Database
         return conn;
     }
 
+    public static string GetCheminBase() => CheminDb;
+    public static string GetDossierDonnees() => DossierDonnees;
+
     public static void Initialiser()
     {
         if (_initialise) return;
@@ -74,10 +77,19 @@ public static class Database
                 CREATE TABLE IF NOT EXISTS Personnel (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     Nom TEXT NOT NULL,
-                    Prenom TEXT NOT NULL
+                    Prenom TEXT NOT NULL,
+                    Matricule TEXT,
+                    Telephone TEXT,
+                    Adresse TEXT,
+                    Email TEXT,
+                    Statut TEXT,
+                    Grade TEXT,
+                    SituationFamiliale TEXT
                 );";
             cmd.ExecuteNonQuery();
         }
+
+        MigrerPersonnel(conn);
 
         using (var cmd = conn.CreateCommand())
         {
@@ -86,11 +98,25 @@ public static class Database
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     PersonnelId INTEGER NOT NULL,
                     DatePointage TEXT NOT NULL,
-                    HeureArrivee TEXT,
-                    HeureSortie TEXT,
+                    MatinArrivee TEXT,
+                    MatinSortie TEXT,
+                    ApresMidiArrivee TEXT,
+                    ApresMidiSortie TEXT,
                     Observation TEXT,
                     FOREIGN KEY (PersonnelId) REFERENCES Personnel(Id) ON DELETE CASCADE,
                     UNIQUE (PersonnelId, DatePointage)
+                );";
+            cmd.ExecuteNonQuery();
+        }
+
+        MigrerPointage(conn);
+
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                CREATE TABLE IF NOT EXISTS Parametre (
+                    Cle TEXT PRIMARY KEY,
+                    Valeur TEXT
                 );";
             cmd.ExecuteNonQuery();
         }
@@ -107,15 +133,120 @@ public static class Database
             cmd.ExecuteNonQuery();
         }
 
+        InitialiserParametresParDefaut(conn);
+
         _initialise = true;
     }
 
-    public static void TesterConnexion()
+    private static void InitialiserParametresParDefaut(SqliteConnection conn)
     {
-        Initialiser();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            INSERT OR IGNORE INTO Parametre (Cle, Valeur) VALUES 
+                ('NomEntreprise', 'Pointage');";
+        cmd.ExecuteNonQuery();
     }
 
-    public static string GetCheminBase() => CheminDb;
+    private static void MigrerPersonnel(SqliteConnection conn)
+    {
+        var colonnesExistantes = new HashSet<string>();
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info(Personnel);";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                colonnesExistantes.Add(reader.GetString(1));
+            }
+        }
+
+        var colonnesAajouter = new List<(string nom, string type)>
+        {
+            ("Matricule", "TEXT"),
+            ("Telephone", "TEXT"),
+            ("Adresse", "TEXT"),
+            ("Email", "TEXT"),
+            ("Statut", "TEXT"),
+            ("Grade", "TEXT"),
+            ("SituationFamiliale", "TEXT")
+        };
+
+        foreach (var (nom, type) in colonnesAajouter)
+        {
+            if (!colonnesExistantes.Contains(nom))
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $"ALTER TABLE Personnel ADD COLUMN {nom} {type};";
+                cmd.ExecuteNonQuery();
+            }
+        }
+    }
+
+    private static void MigrerPointage(SqliteConnection conn)
+    {
+        var colonnesExistantes = new HashSet<string>();
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info(EnregistrementPointage);";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                colonnesExistantes.Add(reader.GetString(1));
+            }
+        }
+
+        var colonnesAajouter = new List<(string nom, string type)>
+        {
+            ("MatinArrivee", "TEXT"),
+            ("MatinSortie", "TEXT"),
+            ("ApresMidiArrivee", "TEXT"),
+            ("ApresMidiSortie", "TEXT")
+        };
+
+        foreach (var (nom, type) in colonnesAajouter)
+        {
+            if (!colonnesExistantes.Contains(nom))
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $"ALTER TABLE EnregistrementPointage ADD COLUMN {nom} {type};";
+                cmd.ExecuteNonQuery();
+            }
+        }
+    }
+
+    public static void TesterConnexion() => Initialiser();
+
+    // ============ PARAMETRES ============
+
+    public static string GetParametre(string cle, string valeurDefaut = "")
+    {
+        Initialiser();
+        using var conn = GetConnection();
+        using var cmd = new SqliteCommand(
+            "SELECT Valeur FROM Parametre WHERE Cle = @c", conn);
+        cmd.Parameters.AddWithValue("@c", cle);
+
+        var result = cmd.ExecuteScalar();
+        return result?.ToString() ?? valeurDefaut;
+    }
+
+    public static void SetParametre(string cle, string valeur)
+    {
+        Initialiser();
+        using var conn = GetConnection();
+        using var cmd = new SqliteCommand(
+            "INSERT INTO Parametre (Cle, Valeur) VALUES (@c, @v) " +
+            "ON CONFLICT(Cle) DO UPDATE SET Valeur = @v", conn);
+        cmd.Parameters.AddWithValue("@c", cle);
+        cmd.Parameters.AddWithValue("@v", valeur);
+        cmd.ExecuteNonQuery();
+    }
+
+    public static string GetNomEntreprise() => GetParametre("NomEntreprise", "Pointage");
+
+    public static void SetNomEntreprise(string nom) => SetParametre("NomEntreprise", nom);
+
+    // ============ UTILISATEURS ============
 
     public static bool AucunUtilisateur()
     {
@@ -184,6 +315,91 @@ public static class Database
         };
     }
 
+    public static bool ChangerMotDePasse(int utilisateurId, string ancienMotDePasse, string nouveauMotDePasse)
+    {
+        Initialiser();
+        using var conn = GetConnection();
+
+        string hashStocke, sel;
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT MotDePasseHash, Sel FROM Utilisateur WHERE Id = @id";
+            cmd.Parameters.AddWithValue("@id", utilisateurId);
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read()) return false;
+            hashStocke = reader.GetString(0);
+            sel = reader.GetString(1);
+        }
+
+        if (!Securite.VerifierMotDePasse(ancienMotDePasse, sel, hashStocke))
+            return false;
+
+        string nouveauSel = Securite.GenererSel();
+        string nouveauHash = Securite.HacherMotDePasse(nouveauMotDePasse, nouveauSel);
+
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "UPDATE Utilisateur SET MotDePasseHash = @h, Sel = @s WHERE Id = @id";
+            cmd.Parameters.AddWithValue("@h", nouveauHash);
+            cmd.Parameters.AddWithValue("@s", nouveauSel);
+            cmd.Parameters.AddWithValue("@id", utilisateurId);
+            cmd.ExecuteNonQuery();
+        }
+
+        return true;
+    }
+
+    public static void MettreAJourNomComplet(int utilisateurId, string nomComplet)
+    {
+        Initialiser();
+        using var conn = GetConnection();
+        using var cmd = new SqliteCommand(
+            "UPDATE Utilisateur SET NomComplet = @n WHERE Id = @id", conn);
+        cmd.Parameters.AddWithValue("@n", nomComplet);
+        cmd.Parameters.AddWithValue("@id", utilisateurId);
+        cmd.ExecuteNonQuery();
+    }
+
+    // ============ IMPORT / EXPORT BASE ============
+
+    public static void ExporterBase(string cheminDestination)
+    {
+        Initialiser();
+
+        var dossier = Path.GetDirectoryName(cheminDestination);
+        if (!string.IsNullOrEmpty(dossier) && !Directory.Exists(dossier))
+            Directory.CreateDirectory(dossier);
+
+        using var conn = GetConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"VACUUM INTO '{cheminDestination.Replace("'", "''")}';";
+        cmd.ExecuteNonQuery();
+    }
+
+    public static void ImporterBase(string cheminSource)
+    {
+        if (!File.Exists(cheminSource))
+            throw new FileNotFoundException("Fichier introuvable.", cheminSource);
+
+        _initialise = false;
+
+        AssurerDossier();
+
+        if (File.Exists(CheminDb))
+            File.Delete(CheminDb);
+
+        var walPath = CheminDb + "-wal";
+        var shmPath = CheminDb + "-shm";
+        if (File.Exists(walPath)) File.Delete(walPath);
+        if (File.Exists(shmPath)) File.Delete(shmPath);
+
+        File.Copy(cheminSource, CheminDb, overwrite: true);
+
+        Initialiser();
+    }
+
+    // ============ PERSONNEL ============
+
     public static List<Personnel> GetPersonnel()
     {
         Initialiser();
@@ -191,7 +407,8 @@ public static class Database
         using var conn = GetConnection();
 
         using var cmd = new SqliteCommand(
-            "SELECT Id, Nom, Prenom FROM Personnel ORDER BY Nom, Prenom", conn);
+            "SELECT Id, Nom, Prenom, Matricule, Telephone, Adresse, Email, Statut, Grade, SituationFamiliale " +
+            "FROM Personnel ORDER BY Nom, Prenom", conn);
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
@@ -199,7 +416,14 @@ public static class Database
             {
                 Id = reader.GetInt32(0),
                 Nom = reader.GetString(1),
-                Prenom = reader.GetString(2)
+                Prenom = reader.GetString(2),
+                Matricule = reader.IsDBNull(3) ? null : reader.GetString(3),
+                Telephone = reader.IsDBNull(4) ? null : reader.GetString(4),
+                Adresse = reader.IsDBNull(5) ? null : reader.GetString(5),
+                Email = reader.IsDBNull(6) ? null : reader.GetString(6),
+                Statut = reader.IsDBNull(7) ? null : reader.GetString(7),
+                Grade = reader.IsDBNull(8) ? null : reader.GetString(8),
+                SituationFamiliale = reader.IsDBNull(9) ? null : reader.GetString(9)
             });
         }
         return liste;
@@ -210,9 +434,18 @@ public static class Database
         Initialiser();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
-            "INSERT INTO Personnel (Nom, Prenom) VALUES (@n, @p); SELECT last_insert_rowid();", conn);
+            "INSERT INTO Personnel " +
+            "  (Nom, Prenom, Matricule, Telephone, Adresse, Email, Statut, Grade, SituationFamiliale) " +
+            "VALUES (@n, @p, @m, @tel, @a, @e, @s, @g, @sf); SELECT last_insert_rowid();", conn);
         cmd.Parameters.AddWithValue("@n", p.Nom);
         cmd.Parameters.AddWithValue("@p", p.Prenom);
+        cmd.Parameters.AddWithValue("@m", (object?)p.Matricule ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@tel", (object?)p.Telephone ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@a", (object?)p.Adresse ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@e", (object?)p.Email ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@s", (object?)p.Statut ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@g", (object?)p.Grade ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@sf", (object?)p.SituationFamiliale ?? DBNull.Value);
         return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
@@ -221,9 +454,19 @@ public static class Database
         Initialiser();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
-            "UPDATE Personnel SET Nom=@n, Prenom=@p WHERE Id=@id", conn);
+            "UPDATE Personnel SET " +
+            "  Nom=@n, Prenom=@p, Matricule=@m, Telephone=@tel, Adresse=@a, Email=@e, " +
+            "  Statut=@s, Grade=@g, SituationFamiliale=@sf " +
+            "WHERE Id=@id", conn);
         cmd.Parameters.AddWithValue("@n", p.Nom);
         cmd.Parameters.AddWithValue("@p", p.Prenom);
+        cmd.Parameters.AddWithValue("@m", (object?)p.Matricule ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@tel", (object?)p.Telephone ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@a", (object?)p.Adresse ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@e", (object?)p.Email ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@s", (object?)p.Statut ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@g", (object?)p.Grade ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@sf", (object?)p.SituationFamiliale ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@id", p.Id);
         cmd.ExecuteNonQuery();
     }
@@ -258,82 +501,90 @@ public static class Database
         }
     }
 
+    // ============ POINTAGE ============
+
+    private static EnregistrementPointage LirePointage(SqliteDataReader reader)
+    {
+        return new EnregistrementPointage
+        {
+            Id = reader.GetInt32(0),
+            PersonnelId = reader.GetInt32(1),
+            DatePointage = DateTime.Parse(reader.GetString(2)),
+            MatinArrivee = reader.IsDBNull(3) ? null : TimeSpan.Parse(reader.GetString(3)),
+            MatinSortie = reader.IsDBNull(4) ? null : TimeSpan.Parse(reader.GetString(4)),
+            ApresMidiArrivee = reader.IsDBNull(5) ? null : TimeSpan.Parse(reader.GetString(5)),
+            ApresMidiSortie = reader.IsDBNull(6) ? null : TimeSpan.Parse(reader.GetString(6)),
+            Observation = reader.IsDBNull(7) ? null : reader.GetString(7),
+            NomComplet = reader.GetString(8)
+        };
+    }
+
+    private const string SelectPointage =
+        "SELECT ep.Id, ep.PersonnelId, ep.DatePointage, " +
+        "       ep.MatinArrivee, ep.MatinSortie, " +
+        "       ep.ApresMidiArrivee, ep.ApresMidiSortie, " +
+        "       ep.Observation, (p.Nom || ' ' || p.Prenom) AS NomComplet " +
+        "FROM EnregistrementPointage ep " +
+        "INNER JOIN Personnel p ON p.Id = ep.PersonnelId ";
+
     public static List<EnregistrementPointage> GetPointagesDuJour(DateTime date)
     {
         Initialiser();
         var liste = new List<EnregistrementPointage>();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
-            "SELECT ep.Id, ep.PersonnelId, ep.DatePointage, ep.HeureArrivee, ep.HeureSortie, " +
-            "       ep.Observation, (p.Nom || ' ' || p.Prenom) AS NomComplet " +
-            "FROM EnregistrementPointage ep " +
-            "INNER JOIN Personnel p ON p.Id = ep.PersonnelId " +
-            "WHERE ep.DatePointage = @d " +
-            "ORDER BY p.Nom, p.Prenom", conn);
+            SelectPointage + "WHERE ep.DatePointage = @d ORDER BY p.Nom, p.Prenom", conn);
         cmd.Parameters.AddWithValue("@d", date.ToString("yyyy-MM-dd"));
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
-            liste.Add(new EnregistrementPointage
-            {
-                Id = reader.GetInt32(0),
-                PersonnelId = reader.GetInt32(1),
-                DatePointage = DateTime.Parse(reader.GetString(2)),
-                HeureArrivee = reader.IsDBNull(3) ? null : TimeSpan.Parse(reader.GetString(3)),
-                HeureSortie = reader.IsDBNull(4) ? null : TimeSpan.Parse(reader.GetString(4)),
-                Observation = reader.IsDBNull(5) ? null : reader.GetString(5),
-                NomComplet = reader.GetString(6)
-            });
+            liste.Add(LirePointage(reader));
         }
         return liste;
     }
 
-    public static List<EnregistrementPointage> GetTousPointages()
+    public static List<EnregistrementPointage> GetPointagesPeriode(DateTime debut, DateTime fin)
     {
         Initialiser();
         var liste = new List<EnregistrementPointage>();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
-            "SELECT ep.Id, ep.PersonnelId, ep.DatePointage, ep.HeureArrivee, ep.HeureSortie, " +
-            "       ep.Observation, (p.Nom || ' ' || p.Prenom) AS NomComplet " +
-            "FROM EnregistrementPointage ep " +
-            "INNER JOIN Personnel p ON p.Id = ep.PersonnelId " +
+            SelectPointage + "WHERE ep.DatePointage BETWEEN @d1 AND @d2 " +
             "ORDER BY ep.DatePointage DESC, p.Nom, p.Prenom", conn);
+        cmd.Parameters.AddWithValue("@d1", debut.ToString("yyyy-MM-dd"));
+        cmd.Parameters.AddWithValue("@d2", fin.ToString("yyyy-MM-dd"));
 
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
-            liste.Add(new EnregistrementPointage
-            {
-                Id = reader.GetInt32(0),
-                PersonnelId = reader.GetInt32(1),
-                DatePointage = DateTime.Parse(reader.GetString(2)),
-                HeureArrivee = reader.IsDBNull(3) ? null : TimeSpan.Parse(reader.GetString(3)),
-                HeureSortie = reader.IsDBNull(4) ? null : TimeSpan.Parse(reader.GetString(4)),
-                Observation = reader.IsDBNull(5) ? null : reader.GetString(5),
-                NomComplet = reader.GetString(6)
-            });
+            liste.Add(LirePointage(reader));
         }
         return liste;
     }
 
     public static void EnregistrerPointage(int personnelId, DateTime date,
-        TimeSpan? arrivee, TimeSpan? sortie, string? observation)
+        TimeSpan? matinArrivee, TimeSpan? matinSortie,
+        TimeSpan? apresMidiArrivee, TimeSpan? apresMidiSortie,
+        string? observation)
     {
         Initialiser();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
             "INSERT INTO EnregistrementPointage " +
-            "  (PersonnelId, DatePointage, HeureArrivee, HeureSortie, Observation) " +
-            "VALUES (@pid, @d, @a, @s, @o) " +
+            "  (PersonnelId, DatePointage, MatinArrivee, MatinSortie, ApresMidiArrivee, ApresMidiSortie, Observation) " +
+            "VALUES (@pid, @d, @ma, @ms, @aa, @as, @o) " +
             "ON CONFLICT(PersonnelId, DatePointage) DO UPDATE SET " +
-            "  HeureArrivee = excluded.HeureArrivee, " +
-            "  HeureSortie = excluded.HeureSortie, " +
+            "  MatinArrivee = excluded.MatinArrivee, " +
+            "  MatinSortie = excluded.MatinSortie, " +
+            "  ApresMidiArrivee = excluded.ApresMidiArrivee, " +
+            "  ApresMidiSortie = excluded.ApresMidiSortie, " +
             "  Observation = excluded.Observation", conn);
         cmd.Parameters.AddWithValue("@pid", personnelId);
         cmd.Parameters.AddWithValue("@d", date.ToString("yyyy-MM-dd"));
-        cmd.Parameters.AddWithValue("@a", arrivee.HasValue ? arrivee.Value.ToString(@"hh\:mm\:ss") : (object)DBNull.Value);
-        cmd.Parameters.AddWithValue("@s", sortie.HasValue ? sortie.Value.ToString(@"hh\:mm\:ss") : (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@ma", matinArrivee.HasValue ? matinArrivee.Value.ToString(@"hh\:mm\:ss") : (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@ms", matinSortie.HasValue ? matinSortie.Value.ToString(@"hh\:mm\:ss") : (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@aa", apresMidiArrivee.HasValue ? apresMidiArrivee.Value.ToString(@"hh\:mm\:ss") : (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@as", apresMidiSortie.HasValue ? apresMidiSortie.Value.ToString(@"hh\:mm\:ss") : (object)DBNull.Value);
         cmd.Parameters.AddWithValue("@o", (object?)observation ?? DBNull.Value);
         cmd.ExecuteNonQuery();
     }
@@ -400,26 +651,40 @@ public static class Database
         const string sql = @"
             SELECT p.Nom, p.Prenom,
                    COUNT(ep.Id) AS JoursPresents,
+                   SUM(CASE WHEN ep.MatinArrivee IS NOT NULL OR ep.MatinSortie IS NOT NULL THEN 1 ELSE 0 END) AS MatinsPresents,
+                   SUM(CASE WHEN ep.ApresMidiArrivee IS NOT NULL OR ep.ApresMidiSortie IS NOT NULL THEN 1 ELSE 0 END) AS ApresMidisPresents,
                    SUM(
-                       (CAST(strftime('%H', ep.HeureSortie) AS INTEGER) * 3600 +
-                        CAST(strftime('%M', ep.HeureSortie) AS INTEGER) * 60 +
-                        CAST(strftime('%S', ep.HeureSortie) AS INTEGER))
-                       -
-                       (CAST(strftime('%H', ep.HeureArrivee) AS INTEGER) * 3600 +
-                        CAST(strftime('%M', ep.HeureArrivee) AS INTEGER) * 60 +
-                        CAST(strftime('%S', ep.HeureArrivee) AS INTEGER))
+                       COALESCE(
+                           (CAST(strftime('%H', ep.MatinSortie) AS INTEGER) * 3600 +
+                            CAST(strftime('%M', ep.MatinSortie) AS INTEGER) * 60 +
+                            CAST(strftime('%S', ep.MatinSortie) AS INTEGER))
+                           -
+                           (CAST(strftime('%H', ep.MatinArrivee) AS INTEGER) * 3600 +
+                            CAST(strftime('%M', ep.MatinArrivee) AS INTEGER) * 60 +
+                            CAST(strftime('%S', ep.MatinArrivee) AS INTEGER)),
+                           0
+                       )
+                       +
+                       COALESCE(
+                           (CAST(strftime('%H', ep.ApresMidiSortie) AS INTEGER) * 3600 +
+                            CAST(strftime('%M', ep.ApresMidiSortie) AS INTEGER) * 60 +
+                            CAST(strftime('%S', ep.ApresMidiSortie) AS INTEGER))
+                           -
+                           (CAST(strftime('%H', ep.ApresMidiArrivee) AS INTEGER) * 3600 +
+                            CAST(strftime('%M', ep.ApresMidiArrivee) AS INTEGER) * 60 +
+                            CAST(strftime('%S', ep.ApresMidiArrivee) AS INTEGER)),
+                           0
+                       )
                    ) AS TotalSecondes,
                    AVG(
-                       CAST(strftime('%H', ep.HeureArrivee) AS INTEGER) * 3600 +
-                       CAST(strftime('%M', ep.HeureArrivee) AS INTEGER) * 60 +
-                       CAST(strftime('%S', ep.HeureArrivee) AS INTEGER)
+                       CAST(strftime('%H', ep.MatinArrivee) AS INTEGER) * 3600 +
+                       CAST(strftime('%M', ep.MatinArrivee) AS INTEGER) * 60 +
+                       CAST(strftime('%S', ep.MatinArrivee) AS INTEGER)
                    ) AS MoyenneArriveeSec
             FROM Personnel p
             LEFT JOIN EnregistrementPointage ep
                 ON ep.PersonnelId = p.Id
                AND ep.DatePointage BETWEEN @d1 AND @d2
-               AND ep.HeureArrivee IS NOT NULL
-               AND ep.HeureSortie IS NOT NULL
             GROUP BY p.Id, p.Nom, p.Prenom
             ORDER BY p.Nom, p.Prenom";
 
@@ -430,19 +695,21 @@ public static class Database
         while (reader.Read())
         {
             int jours = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
+            int matins = reader.IsDBNull(3) ? 0 : reader.GetInt32(3);
+            int apresMidis = reader.IsDBNull(4) ? 0 : reader.GetInt32(4);
 
             string totalHeures = "-";
-            if (!reader.IsDBNull(3))
+            if (!reader.IsDBNull(5))
             {
-                long sec = (long)reader.GetDouble(3);
+                long sec = (long)reader.GetDouble(5);
                 var ts = TimeSpan.FromSeconds(sec);
                 totalHeures = $"{(int)ts.TotalHours}h{ts.Minutes:D2}";
             }
 
             string moyArr = "-";
-            if (!reader.IsDBNull(4))
+            if (!reader.IsDBNull(6))
             {
-                double sec = reader.GetDouble(4);
+                double sec = reader.GetDouble(6);
                 var ts = TimeSpan.FromSeconds(sec);
                 moyArr = $"{ts.Hours:D2}:{ts.Minutes:D2}";
             }
@@ -451,6 +718,8 @@ public static class Database
             {
                 Nom = $"{reader.GetString(0)} {reader.GetString(1)}".Trim(),
                 JoursPresents = jours,
+                MatinsPresents = matins,
+                ApresMidisPresents = apresMidis,
                 TotalHeures = totalHeures,
                 MoyenneArrivee = moyArr
             });

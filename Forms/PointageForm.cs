@@ -311,99 +311,215 @@ public class PointageForm : Form
             {
                 bool estPointe = existants.ContainsKey(p.Id);
 
+                // Ligne de chaque personne
                 var ligne = new Panel
                 {
                     Width = _flowPersonnes.ClientSize.Width - 20,
-                    Height = 140,
+                    Height = 210,
                     BackColor = estPointe ? Theme.FondPointage : Theme.Fond,
-                    Margin = new Padding(0, 0, 0, 10)
+                    Margin = new Padding(0, 0, 0, 12)
                 };
 
+                // Nom
                 var lblNom = new Label
                 {
                     Text = p.NomComplet,
                     Location = new Point(20, 10),
                     Width = ligne.Width - 40,
-                    Height = 30,
+                    Height = 28,
                     Font = new Font(Theme.FamillePolice, 13F, FontStyle.Bold),
                     ForeColor = Theme.Texte,
                     AutoSize = false
                 };
                 ligne.Controls.Add(lblNom);
 
-                var lblArr = new Label
+                // ===== BLOC MATIN =====
+                var panelMatin = new Panel
+                {
+                    Location = new Point(20, 45),
+                    Width = 380,
+                    Height = 110,
+                    BackColor = Color.FromArgb(245, 250, 255)
+                };
+
+                panelMatin.Controls.Add(new Label
+                {
+                    Text = "MATIN",
+                    Location = new Point(10, 5),
+                    AutoSize = true,
+                    Font = Theme.PetitGras,
+                    ForeColor = Theme.Primaire
+                });
+
+                var chkMatin = new CheckBox
+                {
+                    Text = "Pointer",
+                    Location = new Point(290, 5),
+                    AutoSize = true,
+                    Font = Theme.PetitGras,
+                    ForeColor = Theme.Accent,
+                    Checked = estPointe && existants[p.Id].MatinRempli
+                };
+                panelMatin.Controls.Add(chkMatin);
+
+                panelMatin.Controls.Add(new Label
                 {
                     Text = "Arrivée",
-                    Location = new Point(20, 50),
+                    Location = new Point(10, 35),
                     AutoSize = true,
-                    Font = Theme.PetitGras,
+                    Font = Theme.Petit,
                     ForeColor = Theme.TexteSecondaire
-                };
-                var dtArr = new DateTimePicker
+                });
+                var dtMA = new DateTimePicker
                 {
-                    Location = new Point(20, 70),
-                    Width = 140,
-                    Height = 34,
+                    Location = new Point(10, 55),
+                    Width = 130,
+                    Height = 32,
                     Format = DateTimePickerFormat.Time,
                     ShowUpDown = true,
                     Font = Theme.TexteNormal
                 };
+                panelMatin.Controls.Add(dtMA);
 
-                var lblSor = new Label
+                panelMatin.Controls.Add(new Label
                 {
                     Text = "Sortie",
-                    Location = new Point(180, 50),
+                    Location = new Point(160, 35),
                     AutoSize = true,
-                    Font = Theme.PetitGras,
+                    Font = Theme.Petit,
                     ForeColor = Theme.TexteSecondaire
-                };
-                var dtSor = new DateTimePicker
+                });
+                var dtMS = new DateTimePicker
                 {
-                    Location = new Point(180, 70),
-                    Width = 140,
-                    Height = 34,
+                    Location = new Point(160, 55),
+                    Width = 130,
+                    Height = 32,
                     Format = DateTimePickerFormat.Time,
                     ShowUpDown = true,
                     Font = Theme.TexteNormal
                 };
+                panelMatin.Controls.Add(dtMS);
 
+                ligne.Controls.Add(panelMatin);
+
+                // ===== BLOC APRES-MIDI =====
+                var panelAprem = new Panel
+                {
+                    Location = new Point(410, 45),
+                    Width = 380,
+                    Height = 110,
+                    BackColor = Color.FromArgb(255, 250, 245)
+                };
+
+                panelAprem.Controls.Add(new Label
+                {
+                    Text = "APRÈS-MIDI",
+                    Location = new Point(10, 5),
+                    AutoSize = true,
+                    Font = Theme.PetitGras,
+                    ForeColor = Theme.Primaire
+                });
+
+                var chkAprem = new CheckBox
+                {
+                    Text = "Pointer",
+                    Location = new Point(290, 5),
+                    AutoSize = true,
+                    Font = Theme.PetitGras,
+                    ForeColor = Theme.Accent,
+                    Checked = estPointe && existants[p.Id].ApresMidiRempli
+                };
+                panelAprem.Controls.Add(chkAprem);
+
+                panelAprem.Controls.Add(new Label
+                {
+                    Text = "Arrivée",
+                    Location = new Point(10, 35),
+                    AutoSize = true,
+                    Font = Theme.Petit,
+                    ForeColor = Theme.TexteSecondaire
+                });
+                var dtAA = new DateTimePicker
+                {
+                    Location = new Point(10, 55),
+                    Width = 130,
+                    Height = 32,
+                    Format = DateTimePickerFormat.Time,
+                    ShowUpDown = true,
+                    Font = Theme.TexteNormal
+                };
+                panelAprem.Controls.Add(dtAA);
+
+                panelAprem.Controls.Add(new Label
+                {
+                    Text = "Sortie",
+                    Location = new Point(160, 35),
+                    AutoSize = true,
+                    Font = Theme.Petit,
+                    ForeColor = Theme.TexteSecondaire
+                });
+                var dtAS = new DateTimePicker
+                {
+                    Location = new Point(160, 55),
+                    Width = 130,
+                    Height = 32,
+                    Format = DateTimePickerFormat.Time,
+                    ShowUpDown = true,
+                    Font = Theme.TexteNormal
+                };
+                panelAprem.Controls.Add(dtAS);
+
+                ligne.Controls.Add(panelAprem);
+
+                // ===== OBSERVATION =====
                 var lblObs = new Label
                 {
                     Text = "Observation",
-                    Location = new Point(340, 50),
+                    Location = new Point(20, 165),
                     AutoSize = true,
-                    Font = Theme.PetitGras,
+                    Font = Theme.Petit,
                     ForeColor = Theme.TexteSecondaire
                 };
+                ligne.Controls.Add(lblObs);
+
                 var txtObs = new TextBox
                 {
-                    Location = new Point(340, 72),
-                    Width = 300,
-                    Height = 30,
+                    Location = new Point(110, 162),
+                    Width = 480,
+                    Height = 28,
                     Font = Theme.TexteNormal,
                     BorderStyle = BorderStyle.FixedSingle
                 };
+                ligne.Controls.Add(txtObs);
 
-                var btnToggle = Theme.CreerBoutonBlancIconeSeule(
-                    estPointe ? "non-enregistrer.png" : "enregistrer.png", 60, 34);
-                btnToggle.Location = new Point(ligne.Width - 80, 60);
-                btnToggle.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-                btnToggle.Cursor = Cursors.Hand;
-
+                // Charger valeurs existantes
                 if (estPointe)
                 {
                     var pt = existants[p.Id];
-                    if (pt.HeureArrivee.HasValue)
-                        dtArr.Value = DateTime.Today.Add(pt.HeureArrivee.Value);
-                    if (pt.HeureSortie.HasValue)
-                        dtSor.Value = DateTime.Today.Add(pt.HeureSortie.Value);
+
+                    if (pt.MatinArrivee.HasValue)
+                        dtMA.Value = DateTime.Today.Add(pt.MatinArrivee.Value);
+                    if (pt.MatinSortie.HasValue)
+                        dtMS.Value = DateTime.Today.Add(pt.MatinSortie.Value);
+                    if (pt.ApresMidiArrivee.HasValue)
+                        dtAA.Value = DateTime.Today.Add(pt.ApresMidiArrivee.Value);
+                    if (pt.ApresMidiSortie.HasValue)
+                        dtAS.Value = DateTime.Today.Add(pt.ApresMidiSortie.Value);
+
                     txtObs.Text = pt.Observation ?? "";
                 }
                 else
                 {
-                    dtArr.Value = DateTime.Today.AddHours(8);
-                    dtSor.Value = DateTime.Today.AddHours(17);
+                    dtMA.Value = DateTime.Today.AddHours(8);
+                    dtMS.Value = DateTime.Today.AddHours(12);
+                    dtAA.Value = DateTime.Today.AddHours(14);
+                    dtAS.Value = DateTime.Today.AddHours(17);
                 }
+
+                // ===== BOUTON INTERACTIF =====
+                var btnToggle = Theme.CreerBoutonBlancIconeSeule(
+                    estPointe ? "non-enregistrer.png" : "enregistrer.png", 55, 32);
+                btnToggle.Location = new Point(610, 162);
 
                 int pid = p.Id;
                 DateTime dateCible = _dateSelectionnee;
@@ -425,11 +541,26 @@ public class PointageForm : Form
                         }
                         else
                         {
-                            var heureArr = dtArr.Value.TimeOfDay;
-                            var heureSor = dtSor.Value.TimeOfDay;
+                            TimeSpan? matinArr = chkMatin.Checked ? dtMA.Value.TimeOfDay : null;
+                            TimeSpan? matinSor = chkMatin.Checked ? dtMS.Value.TimeOfDay : null;
+                            TimeSpan? apremArr = chkAprem.Checked ? dtAA.Value.TimeOfDay : null;
+                            TimeSpan? apremSor = chkAprem.Checked ? dtAS.Value.TimeOfDay : null;
                             var obs = string.IsNullOrWhiteSpace(txtObs.Text) ? null : txtObs.Text.Trim();
 
-                            Database.EnregistrerPointage(pid, dateCible, heureArr, heureSor, obs);
+                            if (matinArr == null && apremArr == null)
+                            {
+                                MessageBox.Show(
+                                    "Veuillez cocher au moins 'Pointer' pour le matin ou l'après-midi.",
+                                    "Aucune plage sélectionnée",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                return;
+                            }
+
+                            Database.EnregistrerPointage(
+                                pid, dateCible,
+                                matinArr, matinSor,
+                                apremArr, apremSor,
+                                obs);
                         }
 
                         RafraichirCalendrier();
@@ -441,10 +572,7 @@ public class PointageForm : Form
                     }
                 };
 
-                ligne.Controls.AddRange(new Control[]
-                {
-                    lblArr, dtArr, lblSor, dtSor, lblObs, txtObs, btnToggle
-                });
+                ligne.Controls.Add(btnToggle);
 
                 _flowPersonnes.Controls.Add(ligne);
             }

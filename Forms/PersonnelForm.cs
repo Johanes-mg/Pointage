@@ -8,6 +8,13 @@ public class PersonnelForm : Form
     private DataGridView _grid = null!;
     private TextBox _txtNom = null!;
     private TextBox _txtPrenom = null!;
+    private TextBox _txtMatricule = null!;
+    private TextBox _txtTelephone = null!;
+    private TextBox _txtAdresse = null!;
+    private TextBox _txtEmail = null!;
+    private TextBox _txtStatut = null!;
+    private TextBox _txtGrade = null!;
+    private ComboBox _cboSituation = null!;
     private Button _btnAjouter = null!;
     private Button _btnModifier = null!;
     private Button _btnSupprimer = null!;
@@ -43,54 +50,68 @@ public class PersonnelForm : Form
         var panelForm = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 180,
+            Height = 380,
             BackColor = Theme.FondCarte,
-            Padding = new Padding(40, 25, 40, 25)
+            Padding = new Padding(40, 20, 40, 20)
         };
 
-        var lblNom = new Label
+        // ----- Ligne 1 : Nom, Prénom, Matricule -----
+        var lblNom = CreerLabel("Nom", 40, 20);
+        _txtNom = CreerTextBox(40, 42, 260);
+        var lblPrenom = CreerLabel("Prénom", 320, 20);
+        _txtPrenom = CreerTextBox(320, 42, 260);
+        var lblMatricule = CreerLabel("N° Matricule (IM)", 600, 20);
+        _txtMatricule = CreerTextBox(600, 42, 260);
+
+        // ----- Ligne 2 : Téléphone, Email -----
+        var lblTelephone = CreerLabel("Téléphone", 40, 85);
+        _txtTelephone = CreerTextBox(40, 107, 260);
+        var lblEmail = CreerLabel("Email", 320, 85);
+        _txtEmail = CreerTextBox(320, 107, 260);
+
+        // ----- Ligne 3 : Adresse (pleine largeur) -----
+        var lblAdresse = CreerLabel("Adresse", 40, 150);
+        _txtAdresse = CreerTextBox(40, 172, 820);
+
+        // ----- Ligne 4 : Statut, Grade, Situation familiale -----
+        var lblStatut = CreerLabel("Statut", 40, 215);
+        _txtStatut = CreerTextBox(40, 237, 260);
+
+        var lblGrade = CreerLabel("Grade", 320, 215);
+        _txtGrade = CreerTextBox(320, 237, 260);
+
+        var lblSituation = CreerLabel("Situation familiale", 600, 215);
+        _cboSituation = new ComboBox
         {
-            Text = "Nom",
-            Font = Theme.PetitGras,
-            ForeColor = Theme.TexteSecondaire,
-            Location = new Point(40, 25),
-            AutoSize = true
-        };
-        _txtNom = new TextBox
-        {
-            Location = new Point(40, 48),
-            Width = 320,
+            Location = new Point(600, 237),
+            Width = 260,
             Height = 32,
             Font = Theme.TexteNormal,
-            BorderStyle = BorderStyle.FixedSingle
+            DropDownStyle = ComboBoxStyle.DropDownList
         };
-
-        var lblPrenom = new Label
+        _cboSituation.Items.AddRange(new object[]
         {
-            Text = "Prénom",
-            Font = Theme.PetitGras,
-            ForeColor = Theme.TexteSecondaire,
-            Location = new Point(390, 25),
-            AutoSize = true
-        };
-        _txtPrenom = new TextBox
-        {
-            Location = new Point(390, 48),
-            Width = 320,
-            Height = 32,
-            Font = Theme.TexteNormal,
-            BorderStyle = BorderStyle.FixedSingle
-        };
+            "",
+            "Célibataire",
+            "Marié(e)",
+            "Divorcé(e)",
+            "Veuf(ve)"
+        });
+        _cboSituation.SelectedIndex = 0;
 
+        // ----- Boutons -----
         _btnAjouter = Theme.CreerBoutonBlancArrondi("ajouter.png", "Ajouter");
-        _btnAjouter.Location = new Point(40, 115);
+        _btnAjouter.Location = new Point(40, 300);
+        _btnAjouter.Width = 170;
 
         _btnModifier = Theme.CreerBoutonBlancArrondi("modifier.png", "Modifier");
-        _btnModifier.Location = new Point(225, 115);
+        _btnModifier.Location = new Point(225, 300);
+        _btnModifier.Width = 170;
         _btnModifier.Enabled = false;
 
         _btnSupprimer = Theme.CreerBoutonBlancArrondi("effacer.png", "Supprimer");
-        _btnSupprimer.Location = new Point(410, 115);
+        _btnSupprimer.Location = new Point(410, 300);
+        _btnSupprimer.Width = 170;
         _btnSupprimer.Enabled = false;
 
         _btnAjouter.Click += BtnAjouter_Click;
@@ -99,7 +120,10 @@ public class PersonnelForm : Form
 
         panelForm.Controls.AddRange(new Control[]
         {
-            lblNom, _txtNom, lblPrenom, _txtPrenom,
+            lblNom, _txtNom, lblPrenom, _txtPrenom, lblMatricule, _txtMatricule,
+            lblTelephone, _txtTelephone, lblEmail, _txtEmail,
+            lblAdresse, _txtAdresse,
+            lblStatut, _txtStatut, lblGrade, _txtGrade, lblSituation, _cboSituation,
             _btnAjouter, _btnModifier, _btnSupprimer
         });
 
@@ -122,41 +146,43 @@ public class PersonnelForm : Form
             RowHeadersVisible = false,
             BackgroundColor = Theme.FondCarte,
             BorderStyle = BorderStyle.None,
-            Font = new Font(Theme.FamillePolice, 12F, FontStyle.Regular),
+            Font = new Font(Theme.FamillePolice, 11F, FontStyle.Regular),
             GridColor = Theme.Bordure,
             EnableHeadersVisualStyles = false,
-            ColumnHeadersHeight = 60,
-            RowTemplate = { Height = 70 },
+            ColumnHeadersHeight = 55,
+            RowTemplate = { Height = 55 },
             AllowUserToResizeRows = false,
             CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
-            AllowUserToResizeColumns = true
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
         };
         _grid.ColumnHeadersDefaultCellStyle.BackColor = Theme.Primaire;
         _grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-        _grid.ColumnHeadersDefaultCellStyle.Font = new Font(Theme.FamillePolice, 12F, FontStyle.Bold);
-        _grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(20, 0, 20, 0);
+        _grid.ColumnHeadersDefaultCellStyle.Font = new Font(Theme.FamillePolice, 11F, FontStyle.Bold);
+        _grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(15, 0, 15, 0);
         _grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = Theme.Primaire;
         _grid.AlternatingRowsDefaultCellStyle.BackColor = Theme.LigneAlternee;
         _grid.DefaultCellStyle.SelectionBackColor = Theme.Accent;
         _grid.DefaultCellStyle.SelectionForeColor = Color.White;
-        _grid.DefaultCellStyle.Padding = new Padding(20, 0, 20, 0);
+        _grid.DefaultCellStyle.Padding = new Padding(15, 0, 15, 0);
 
         _grid.Columns.Add(new DataGridViewTextBoxColumn
         { DataPropertyName = "Id", Visible = false });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            DataPropertyName = "Nom",
-            HeaderText = "NOM",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            FillWeight = 50
-        });
+        { DataPropertyName = "Matricule", HeaderText = "MATRICULE", FillWeight = 10 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            DataPropertyName = "Prenom",
-            HeaderText = "PRÉNOM",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            FillWeight = 50
-        });
+        { DataPropertyName = "Nom", HeaderText = "NOM", FillWeight = 12 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn
+        { DataPropertyName = "Prenom", HeaderText = "PRÉNOM", FillWeight = 12 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn
+        { DataPropertyName = "Telephone", HeaderText = "TÉLÉPHONE", FillWeight = 12 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn
+        { DataPropertyName = "Email", HeaderText = "EMAIL", FillWeight = 18 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn
+        { DataPropertyName = "Statut", HeaderText = "STATUT", FillWeight = 10 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn
+        { DataPropertyName = "Grade", HeaderText = "GRADE", FillWeight = 10 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn
+        { DataPropertyName = "SituationFamiliale", HeaderText = "SITUATION", FillWeight = 12 });
 
         _grid.DataBindingComplete += (_, _) => NettoyerSelection();
         _grid.CellClick += Grid_CellClick;
@@ -166,6 +192,30 @@ public class PersonnelForm : Form
         Controls.Add(panelGrille);
         Controls.Add(panelForm);
         Controls.Add(panelEntete);
+    }
+
+    private Label CreerLabel(string texte, int x, int y)
+    {
+        return new Label
+        {
+            Text = texte,
+            Font = Theme.PetitGras,
+            ForeColor = Theme.TexteSecondaire,
+            Location = new Point(x, y),
+            AutoSize = true
+        };
+    }
+
+    private TextBox CreerTextBox(int x, int y, int largeur)
+    {
+        return new TextBox
+        {
+            Location = new Point(x, y),
+            Width = largeur,
+            Height = 28,
+            Font = Theme.TexteNormal,
+            BorderStyle = BorderStyle.FixedSingle
+        };
     }
 
     private void NettoyerSelection()
@@ -210,6 +260,13 @@ public class PersonnelForm : Form
             _selectedId = item.Id;
             _txtNom.Text = item.Nom;
             _txtPrenom.Text = item.Prenom;
+            _txtMatricule.Text = item.Matricule ?? "";
+            _txtTelephone.Text = item.Telephone ?? "";
+            _txtAdresse.Text = item.Adresse ?? "";
+            _txtEmail.Text = item.Email ?? "";
+            _txtStatut.Text = item.Statut ?? "";
+            _txtGrade.Text = item.Grade ?? "";
+            _cboSituation.SelectedItem = item.SituationFamiliale ?? "";
             _btnModifier.Enabled = true;
             _btnSupprimer.Enabled = true;
         }
@@ -226,12 +283,7 @@ public class PersonnelForm : Form
 
         try
         {
-            Database.AjouterPersonnel(new Personnel
-            {
-                Nom = _txtNom.Text.Trim(),
-                Prenom = _txtPrenom.Text.Trim()
-            });
-
+            Database.AjouterPersonnel(LireFormulaire());
             ViderChamps();
             ChargerDonnees();
             _txtNom.Focus();
@@ -261,13 +313,9 @@ public class PersonnelForm : Form
 
         try
         {
-            Database.ModifierPersonnel(new Personnel
-            {
-                Id = _selectedId.Value,
-                Nom = _txtNom.Text.Trim(),
-                Prenom = _txtPrenom.Text.Trim()
-            });
-
+            var p = LireFormulaire();
+            p.Id = _selectedId.Value;
+            Database.ModifierPersonnel(p);
             ViderChamps();
             ChargerDonnees();
             _txtNom.Focus();
@@ -307,6 +355,24 @@ public class PersonnelForm : Form
         }
     }
 
+    private Personnel LireFormulaire()
+    {
+        string situation = _cboSituation.SelectedItem?.ToString() ?? "";
+
+        return new Personnel
+        {
+            Nom = _txtNom.Text.Trim(),
+            Prenom = _txtPrenom.Text.Trim(),
+            Matricule = string.IsNullOrWhiteSpace(_txtMatricule.Text) ? null : _txtMatricule.Text.Trim(),
+            Telephone = string.IsNullOrWhiteSpace(_txtTelephone.Text) ? null : _txtTelephone.Text.Trim(),
+            Adresse = string.IsNullOrWhiteSpace(_txtAdresse.Text) ? null : _txtAdresse.Text.Trim(),
+            Email = string.IsNullOrWhiteSpace(_txtEmail.Text) ? null : _txtEmail.Text.Trim(),
+            Statut = string.IsNullOrWhiteSpace(_txtStatut.Text) ? null : _txtStatut.Text.Trim(),
+            Grade = string.IsNullOrWhiteSpace(_txtGrade.Text) ? null : _txtGrade.Text.Trim(),
+            SituationFamiliale = string.IsNullOrWhiteSpace(situation) ? null : situation
+        };
+    }
+
     private void ViderChamps()
     {
         _enCoursDeDeselection = true;
@@ -314,6 +380,13 @@ public class PersonnelForm : Form
         _selectedId = null;
         _txtNom.Clear();
         _txtPrenom.Clear();
+        _txtMatricule.Clear();
+        _txtTelephone.Clear();
+        _txtAdresse.Clear();
+        _txtEmail.Clear();
+        _txtStatut.Clear();
+        _txtGrade.Clear();
+        _cboSituation.SelectedIndex = 0;
         _btnModifier.Enabled = false;
         _btnSupprimer.Enabled = false;
 
@@ -328,6 +401,13 @@ public class PersonnelForm : Form
         _selectedId = null;
         _txtNom.Clear();
         _txtPrenom.Clear();
+        _txtMatricule.Clear();
+        _txtTelephone.Clear();
+        _txtAdresse.Clear();
+        _txtEmail.Clear();
+        _txtStatut.Clear();
+        _txtGrade.Clear();
+        _cboSituation.SelectedIndex = 0;
         _btnModifier.Enabled = false;
         _btnSupprimer.Enabled = false;
     }

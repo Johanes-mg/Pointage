@@ -88,10 +88,6 @@ public class AccueilForm : Form
         btnExport.Font = new Font(Theme.FamillePolice, 14F, FontStyle.Bold);
         btnExport.Anchor = AnchorStyles.None;
         btnExport.Margin = new Padding(0);
-        btnExport.Padding = new Padding(0);
-        btnExport.ImageAlign = ContentAlignment.MiddleRight;
-        btnExport.TextAlign = ContentAlignment.MiddleLeft;
-        btnExport.TextImageRelation = TextImageRelation.TextBeforeImage;
         btnExport.Click += BtnExport_Click;
 
         bloc.Controls.Add(_lblJour, 0, 0);
@@ -108,17 +104,21 @@ public class AccueilForm : Form
     {
         try
         {
+            using var dialog = new ExportDialogForm();
+
+            if (dialog.ShowDialog(this) != DialogResult.OK || dialog.ExportAnnule)
+                return;
+
             Cursor = Cursors.WaitCursor;
 
-            var debut = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-            var fin = DateTime.Today;
-
-            string chemin = ExcelExport.ExporterTout();
+            string chemin = ExcelExport.ExporterTout(dialog.DateDebut, dialog.DateFin);
 
             Cursor = Cursors.Default;
 
             var reponse = MessageBox.Show(
                 $"Export réussi !\n\n" +
+                $"Période : {dialog.DateDebut:dd/MM/yyyy}" +
+                (dialog.DateDebut.Date == dialog.DateFin.Date ? "" : $" au {dialog.DateFin:dd/MM/yyyy}") + "\n" +
                 $"Fichier : {Path.GetFileName(chemin)}\n" +
                 $"Dossier : {Path.GetDirectoryName(chemin)}\n\n" +
                 $"Voulez-vous ouvrir le dossier ?",

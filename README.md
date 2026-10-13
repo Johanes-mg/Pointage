@@ -4,7 +4,7 @@ Application de gestion de pointage de présence du personnel développée en **C
 
 ---
 
-## 🚀 Fonctionnalités principales
+## Fonctionnalités principales
 
 - **Gestion des utilisateurs & Sécurité** :
   - Inscription et authentification sécurisée.
@@ -26,7 +26,7 @@ Application de gestion de pointage de présence du personnel développée en **C
 
 ---
 
-## 🛠️ Technologies & Bibliothèques
+## Technologies & Bibliothèques
 
 - **Langage** : C# (.NET 8.0 Windows Forms)
 - **Base de données** : SQLite (`Microsoft.Data.Sqlite` v10.0.12)
@@ -59,11 +59,11 @@ Application de gestion de pointage de présence du personnel développée en **C
 
 ### Page de bilan des personnel
 
-![Profil clair](captures/pointage_6.png)
+![Bilan](captures/pointage_6.png)
 
 ---
 
-## 📁 Structure du Projet
+## Structure du Projet
 
 ```text
 Pointage/
@@ -89,11 +89,3 @@ Pointage/
 ├── Pointage.csproj          # Fichier de projet .NET
 └── Program.cs               # Point d'entrée de l'application
 ```
-
-## ⚙️ Configuration & Compilation
-
-### Prérequis
-
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- Visual Studio 2022 ou Visual Studio Code (avec l'extension C#)
-- _(Optionnel)_ [Inno Setup](https://jrsoftware.org/isinfo.php) pour générer l'installeur exécutable.

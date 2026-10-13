@@ -9,6 +9,8 @@ public class MainForm : Form
     private Panel _panelContenu = null!;
     private Panel _panelTop = null!;
     private FlowLayoutPanel _panelNav = null!;
+    private Panel _panelCentreNav = null!;
+    private Label _lblUtil = null!;
     private readonly Utilisateur _utilisateur;
 
     public MainForm(Utilisateur utilisateur)
@@ -18,6 +20,7 @@ public class MainForm : Form
         Text = "Pointage";
         WindowState = FormWindowState.Maximized;
         StartPosition = FormStartPosition.CenterScreen;
+        MinimumSize = new Size(1100, 650);
         BackColor = Theme.Fond;
         Font = Theme.TexteNormal;
         Icon = Theme.ChargerIcone("logo.ico");
@@ -36,75 +39,76 @@ public class MainForm : Form
         _panelTop = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 75,
+            Height = 80,
             BackColor = Theme.Primaire
         };
 
-        var logo = Theme.ChargerImageRedimensionnee("logo.png", 50, 50);
+        var panelGauche = new Panel
+        {
+            Dock = DockStyle.Left,
+            Width = 320,
+            BackColor = Theme.Primaire
+        };
+
+        var logo = Theme.ChargerImageRedimensionnee("logo.png", 44, 44);
         if (logo != null)
         {
-            _panelTop.Controls.Add(new PictureBox
+            panelGauche.Controls.Add(new PictureBox
             {
                 Image = logo,
                 SizeMode = PictureBoxSizeMode.Zoom,
-                Width = 50,
-                Height = 50,
-                Left = 25,
-                Top = 12
+                Width = 44,
+                Height = 44,
+                Left = 15,
+                Top = 18
             });
         }
 
-        _panelNav = new FlowLayoutPanel
+        var lblTitre = new Label
         {
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Top = 17,
-            Left = 100,
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
-        };
-
-        var btnAccueil = CreerBoutonNav("accueil.png", "Accueil");
-        var btnPersonnel = CreerBoutonNav("personnel.png", "Personnel");
-        var btnPointage = CreerBoutonNav("pointage.png", "Pointage");
-        var btnBilan = CreerBoutonNav("bilan.png", "Bilan");
-
-        btnAccueil.Click += (_, _) => Afficher(new AccueilForm(), btnAccueil);
-        btnPersonnel.Click += (_, _) => Afficher(new PersonnelForm(), btnPersonnel);
-        btnPointage.Click += (_, _) => Afficher(new PointageForm(), btnPointage);
-        btnBilan.Click += (_, _) => Afficher(new BilanForm(), btnBilan);
-
-        _panelNav.Controls.AddRange(new Control[]
-        {
-            btnAccueil, btnPersonnel, btnPointage, btnBilan
-        });
-
-        _panelTop.Controls.Add(_panelNav);
-
-        var lblUtil = new Label
-        {
-            Text = $"Connecté : {_utilisateur.NomComplet}",
-            Font = new Font(Theme.FamillePolice, 10F, FontStyle.Regular),
+            Text = "Pointage",
+            Font = new Font(Theme.FamillePolice, 13F, FontStyle.Bold),
             ForeColor = Color.White,
-            AutoSize = true,
-            Top = 26,
-            Left = 0,
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            Location = new Point(72, 14),
+            AutoSize = false,
+            Width = 230,
+            Height = 24,
+            AutoEllipsis = true,
+            TextAlign = ContentAlignment.MiddleLeft
         };
-        _panelTop.Controls.Add(lblUtil);
+        panelGauche.Controls.Add(lblTitre);
+
+        _lblUtil = new Label
+        {
+            Text = _utilisateur.NomComplet,
+            Font = new Font(Theme.FamillePolice, 9F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(200, 215, 235),
+            Location = new Point(72, 42),
+            AutoSize = false,
+            Width = 230,
+            Height = 20,
+            AutoEllipsis = true,
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+        panelGauche.Controls.Add(_lblUtil);
+
+        _panelTop.Controls.Add(panelGauche);
+
+        var panelDroite = new Panel
+        {
+            Dock = DockStyle.Right,
+            Width = 70,
+            BackColor = Theme.Primaire
+        };
 
         var btnDeconnexion = new Button
         {
-            Width = 48,
-            Height = 48,
-            Top = 14,
-            Left = 0,
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Width = 50,
+            Height = 50,
+            Location = new Point(10, 15),
             FlatStyle = FlatStyle.Flat,
             BackColor = Theme.Primaire,
-            Cursor = Cursors.Hand,
-            TextImageRelation = TextImageRelation.ImageAboveText
+            Cursor = Cursors.Hand
         };
         btnDeconnexion.FlatAppearance.BorderSize = 0;
         btnDeconnexion.FlatAppearance.MouseOverBackColor = Theme.PrimaireClair;
@@ -117,9 +121,9 @@ public class MainForm : Form
         }
         else
         {
-            btnDeconnexion.Text = "Déco";
+            btnDeconnexion.Text = "X";
             btnDeconnexion.ForeColor = Color.White;
-            btnDeconnexion.Font = new Font(Theme.FamillePolice, 8F);
+            btnDeconnexion.Font = new Font(Theme.FamillePolice, 12F, FontStyle.Bold);
         }
 
         btnDeconnexion.Click += (_, _) =>
@@ -139,31 +143,79 @@ public class MainForm : Form
                 Application.Exit();
             }
         };
-        _panelTop.Controls.Add(btnDeconnexion);
+        panelDroite.Controls.Add(btnDeconnexion);
+        _panelTop.Controls.Add(panelDroite);
+
+        _panelCentreNav = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Primaire
+        };
+
+        _panelNav = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Primaire,
+            Margin = new Padding(0),
+            Padding = new Padding(0)
+        };
+
+        var btnAccueil = CreerBoutonNav("accueil.png", "Accueil");
+        var btnPersonnel = CreerBoutonNav("personnel.png", "Personnel");
+        var btnPointage = CreerBoutonNav("pointage.png", "Pointage");
+        var btnBilan = CreerBoutonNav("bilan.png", "Bilan");
+        var btnCompte = CreerBoutonNav("compte.png", "Compte");
+
+        btnAccueil.Click += (_, _) => Afficher(new AccueilForm(), btnAccueil);
+        btnPersonnel.Click += (_, _) => Afficher(new PersonnelForm(), btnPersonnel);
+        btnPointage.Click += (_, _) => Afficher(new PointageForm(), btnPointage);
+        btnBilan.Click += (_, _) => Afficher(new BilanForm(), btnBilan);
+        btnCompte.Click += (_, _) => Afficher(new CompteForm(_utilisateur), btnCompte);
+
+        _panelNav.Controls.AddRange(new Control[]
+        {
+            btnAccueil, btnPersonnel, btnPointage, btnBilan, btnCompte
+        });
+
+        _panelCentreNav.Controls.Add(_panelNav);
+
+        _panelCentreNav.Resize += (_, _) => CentrerNav();
+        _panelCentreNav.Layout += (_, _) => CentrerNav();
+        _panelNav.SizeChanged += (_, _) => CentrerNav();
+        _panelCentreNav.HandleCreated += (_, _) => CentrerNav();
+
+        _panelTop.Controls.Add(_panelCentreNav);
 
         MarquerActif(btnAccueil);
+    }
 
-        _panelTop.Resize += (_, _) =>
-        {
-            int droite = _panelTop.ClientSize.Width - 25;
+    private void CentrerNav()
+    {
+        if (_panelNav == null || _panelCentreNav == null) return;
+        if (_panelNav.Width <= 0 || _panelCentreNav.ClientSize.Width <= 0) return;
 
-            btnDeconnexion.Left = droite - btnDeconnexion.Width;
+        int x = (_panelCentreNav.ClientSize.Width - _panelNav.Width) / 2;
+        int y = (_panelCentreNav.ClientSize.Height - _panelNav.Height) / 2;
 
-            int lblLeft = btnDeconnexion.Left - lblUtil.Width - 15;
-            lblUtil.Left = Math.Max(100, lblLeft);
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
 
-            int navLeft = lblUtil.Left - _panelNav.Width - 20;
-            _panelNav.Left = Math.Max(100, navLeft);
-        };
+        _panelNav.Location = new Point(x, y);
     }
 
     private Button CreerBoutonNav(string fichierImage, string texte)
     {
+        const int largeurBouton = 140;
+        const int hauteurBouton = 44;
+
         var btn = new Button
         {
-            Text = "  " + texte,
-            Width = 150,
-            Height = 40,
+            Text = texte,
+            Width = largeurBouton,
+            Height = hauteurBouton,
             Margin = new Padding(4, 0, 4, 0),
             FlatStyle = FlatStyle.Flat,
             BackColor = Theme.Primaire,
@@ -172,16 +224,20 @@ public class MainForm : Form
             Cursor = Cursors.Hand,
             TextImageRelation = TextImageRelation.ImageBeforeText,
             ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(15, 0, 0, 0)
+            TextAlign = ContentAlignment.MiddleCenter,
+            Padding = new Padding(8, 0, 8, 0),
+            UseVisualStyleBackColor = false
         };
         btn.FlatAppearance.BorderSize = 0;
         btn.FlatAppearance.MouseOverBackColor = Theme.PrimaireClair;
         btn.FlatAppearance.MouseDownBackColor = Theme.Accent;
 
-        var img = Theme.ChargerImageRedimensionnee(fichierImage, 22, 22);
+        var img = Theme.ChargerImageRedimensionnee(fichierImage, 20, 20);
         if (img != null)
+        {
             btn.Image = img;
+            btn.ImageAlign = ContentAlignment.MiddleLeft;
+        }
 
         return btn;
     }
