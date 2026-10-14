@@ -55,7 +55,6 @@ public class PersonnelForm : Form
             Padding = new Padding(40, 20, 40, 20)
         };
 
-        // ----- Ligne 1 : Nom, Prénom, Matricule -----
         var lblNom = CreerLabel("Nom", 40, 20);
         _txtNom = CreerTextBox(40, 42, 260);
         var lblPrenom = CreerLabel("Prénom", 320, 20);
@@ -63,17 +62,14 @@ public class PersonnelForm : Form
         var lblMatricule = CreerLabel("N° Matricule (IM)", 600, 20);
         _txtMatricule = CreerTextBox(600, 42, 260);
 
-        // ----- Ligne 2 : Téléphone, Email -----
         var lblTelephone = CreerLabel("Téléphone", 40, 85);
         _txtTelephone = CreerTextBox(40, 107, 260);
         var lblEmail = CreerLabel("Email", 320, 85);
         _txtEmail = CreerTextBox(320, 107, 260);
 
-        // ----- Ligne 3 : Adresse (pleine largeur) -----
         var lblAdresse = CreerLabel("Adresse", 40, 150);
         _txtAdresse = CreerTextBox(40, 172, 820);
 
-        // ----- Ligne 4 : Statut, Grade, Situation familiale -----
         var lblStatut = CreerLabel("Statut", 40, 215);
         _txtStatut = CreerTextBox(40, 237, 260);
 
@@ -99,7 +95,6 @@ public class PersonnelForm : Form
         });
         _cboSituation.SelectedIndex = 0;
 
-        // ----- Boutons -----
         _btnAjouter = Theme.CreerBoutonBlancArrondi("ajouter.png", "Ajouter");
         _btnAjouter.Location = new Point(40, 300);
         _btnAjouter.Width = 170;
@@ -152,8 +147,11 @@ public class PersonnelForm : Form
             ColumnHeadersHeight = 55,
             RowTemplate = { Height = 55 },
             AllowUserToResizeRows = false,
+            AllowUserToResizeColumns = true,
             CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
+            ScrollBars = ScrollBars.Both,
+            AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None
         };
         _grid.ColumnHeadersDefaultCellStyle.BackColor = Theme.Primaire;
         _grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
@@ -166,23 +164,64 @@ public class PersonnelForm : Form
         _grid.DefaultCellStyle.Padding = new Padding(15, 0, 15, 0);
 
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        { DataPropertyName = "Id", Visible = false });
+        {
+            DataPropertyName = "Id",
+            Visible = false
+        });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        { DataPropertyName = "Matricule", HeaderText = "MATRICULE", FillWeight = 10 });
+        {
+            DataPropertyName = "Matricule",
+            HeaderText = "MATRICULE",
+            Width = 110
+        });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        { DataPropertyName = "Nom", HeaderText = "NOM", FillWeight = 12 });
+        {
+            DataPropertyName = "Nom",
+            HeaderText = "NOM",
+            Width = 180
+        });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        { DataPropertyName = "Prenom", HeaderText = "PRÉNOM", FillWeight = 12 });
+        {
+            DataPropertyName = "Prenom",
+            HeaderText = "PRÉNOM",
+            Width = 180
+        });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        { DataPropertyName = "Telephone", HeaderText = "TÉLÉPHONE", FillWeight = 12 });
+        {
+            DataPropertyName = "Telephone",
+            HeaderText = "TÉLÉPHONE",
+            Width = 140
+        });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        { DataPropertyName = "Email", HeaderText = "EMAIL", FillWeight = 18 });
+        {
+            DataPropertyName = "Adresse",
+            HeaderText = "ADRESSE",
+            Width = 350
+        });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        { DataPropertyName = "Statut", HeaderText = "STATUT", FillWeight = 10 });
+        {
+            DataPropertyName = "Email",
+            HeaderText = "EMAIL",
+            Width = 240
+        });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        { DataPropertyName = "Grade", HeaderText = "GRADE", FillWeight = 10 });
+        {
+            DataPropertyName = "Statut",
+            HeaderText = "STATUT",
+            Width = 130
+        });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
-        { DataPropertyName = "SituationFamiliale", HeaderText = "SITUATION", FillWeight = 12 });
+        {
+            DataPropertyName = "Grade",
+            HeaderText = "GRADE",
+            Width = 180
+        });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = "SituationFamiliale",
+            HeaderText = "SITUATION",
+            Width = 130
+        });
 
         _grid.DataBindingComplete += (_, _) => NettoyerSelection();
         _grid.CellClick += Grid_CellClick;

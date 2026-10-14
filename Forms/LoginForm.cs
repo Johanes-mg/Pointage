@@ -96,15 +96,12 @@ public class LoginForm : Form
 
         Controls.Add(panelTop);
 
-        // ---- Nom complet ----
         _lblNomComplet = CreerLabel("Nom complet");
         _txtNomComplet = CreerTextBox();
 
-        // ---- Nom d'utilisateur ----
         _lblUtilisateur = CreerLabel("Nom d'utilisateur");
         _txtUtilisateur = CreerTextBox();
 
-        // ---- Mot de passe ----
         _lblMotDePasse = CreerLabel("Mot de passe");
         _txtMotDePasse = CreerTextBox();
         _txtMotDePasse.UseSystemPasswordChar = true;
@@ -117,7 +114,6 @@ public class LoginForm : Form
             MettreAJourIconeOeil(_picVoirMdp, _mdpVisible);
         };
 
-        // ---- Confirmer mot de passe ----
         _lblConfirm = CreerLabel("Confirmer le mot de passe");
         _txtMotDePasseConfirm = CreerTextBox();
         _txtMotDePasseConfirm.UseSystemPasswordChar = true;
@@ -130,7 +126,6 @@ public class LoginForm : Form
             MettreAJourIconeOeil(_picVoirConfirm, _confirmVisible);
         };
 
-        // ---- Message d'erreur ----
         _lblMessage = new Label
         {
             Width = 400,
@@ -140,7 +135,6 @@ public class LoginForm : Form
             TextAlign = ContentAlignment.MiddleCenter
         };
 
-        // ---- Bouton principal ----
         _btnPrincipal = new Button
         {
             Width = 400,
@@ -154,7 +148,6 @@ public class LoginForm : Form
         _btnPrincipal.FlatAppearance.BorderSize = 0;
         _btnPrincipal.Click += BtnPrincipal_Click;
 
-        // ---- Bouton basculer ----
         _btnSecondaire = new Button
         {
             Width = 400,
@@ -187,7 +180,6 @@ public class LoginForm : Form
         Controls.Add(_btnPrincipal);
         Controls.Add(_btnSecondaire);
 
-        // Touche Entrée = champ suivant, et sur le dernier champ = valider
         _txtNomComplet.KeyDown += (s, e) => PasserAuSuivant(s, e, _txtUtilisateur);
         _txtUtilisateur.KeyDown += (s, e) => PasserAuSuivant(s, e, _txtMotDePasse);
         _txtMotDePasse.KeyDown += (s, e) => PasserAuSuivant(s, e,
@@ -376,6 +368,8 @@ public class LoginForm : Form
             return;
         }
 
+        Database.DefinirUtilisateurCourant(u.NomUtilisateur);
+
         UtilisateurConnecte = u;
         DialogResult = DialogResult.OK;
         Close();
@@ -418,6 +412,8 @@ public class LoginForm : Form
         }
 
         int id = Database.CreerUtilisateur(nom, mdp, complet);
+
+        Database.DefinirUtilisateurCourant(nom);
 
         UtilisateurConnecte = new Utilisateur
         {

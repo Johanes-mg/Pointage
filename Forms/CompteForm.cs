@@ -147,7 +147,7 @@ public class CompteForm : Form
 
         var lblInfo = new Label
         {
-            Text = "Emplacement de la base de données :",
+            Text = "Base de données de ce compte :",
             Location = new Point(30, 60),
             AutoSize = true,
             Font = Theme.PetitGras,
@@ -338,7 +338,7 @@ public class CompteForm : Form
             {
                 Title = "Exporter la base de données",
                 Filter = "Base SQLite (*.db)|*.db|Tous les fichiers (*.*)|*.*",
-                FileName = $"pointage_{DateTime.Now:yyyy-MM-dd}.db",
+                FileName = $"pointage_{_utilisateur.NomUtilisateur}_{DateTime.Now:yyyy-MM-dd}.db",
                 InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
             };
 
@@ -365,8 +365,8 @@ public class CompteForm : Form
         {
             var reponse = MessageBox.Show(
                 "ATTENTION !\n\n" +
-                "L'import remplacera TOUTES les données actuelles " +
-                "(personnel, pointages, utilisateurs, paramètres).\n\n" +
+                "L'import remplacera TOUTES les données du compte actuel " +
+                "(personnel, pointages, paramètres).\n\n" +
                 "Cette action est irréversible. Continuer ?",
                 "Confirmer l'import",
                 MessageBoxButtons.YesNo,

@@ -10,12 +10,37 @@ public static class Database
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Pointage");
 
-    private static readonly string CheminDb =
+    private static string? _utilisateurCourant;
+
+    private static string CheminDbGlobal =>
         Path.Combine(DossierDonnees, "pointage.db");
 
-    private static string ConnStr => $"Data Source={CheminDb}";
+    private static string CheminDbMetier =>
+        string.IsNullOrEmpty(_utilisateurCourant)
+            ? Path.Combine(DossierDonnees, "pointage.db")
+            : Path.Combine(DossierDonnees, $"pointage_{_utilisateurCourant}.db");
 
-    private static bool _initialise = false;
+    private static string ConnStrGlobal => $"Data Source={CheminDbGlobal}";
+    private static string ConnStrMetier => $"Data Source={CheminDbMetier}";
+
+    private static bool _globalInitialise = false;
+    private static bool _metierInitialise = false;
+
+    public static void DefinirUtilisateurCourant(string nomUtilisateur)
+    {
+        _utilisateurCourant = SanitiserNomFichier(nomUtilisateur);
+        _metierInitialise = false;
+        InitialiserMetier();
+    }
+
+    private static string SanitiserNomFichier(string nom)
+    {
+        var invalides = Path.GetInvalidFileNameChars();
+        var sb = new System.Text.StringBuilder();
+        foreach (char c in nom)
+            sb.Append(invalides.Contains(c) ? '_' : c);
+        return sb.ToString().Trim();
+    }
 
     private static void AssurerDossier()
     {
@@ -31,30 +56,36 @@ public static class Database
         }
     }
 
-    public static SqliteConnection GetConnection()
+    private static SqliteConnection Ouvrir(string connStr)
     {
         AssurerDossier();
-
-        var conn = new SqliteConnection(ConnStr);
+        var conn = new SqliteConnection(connStr);
         conn.Open();
-
         using var pragma = conn.CreateCommand();
         pragma.CommandText = "PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;";
         pragma.ExecuteNonQuery();
-
         return conn;
     }
 
-    public static string GetCheminBase() => CheminDb;
+    public static SqliteConnection GetConnectionGlobal() => Ouvrir(ConnStrGlobal);
+    public static SqliteConnection GetConnection() => Ouvrir(ConnStrMetier);
+
+    public static string GetCheminBase() => CheminDbMetier;
+    public static string GetCheminBaseGlobal() => CheminDbGlobal;
     public static string GetDossierDonnees() => DossierDonnees;
 
     public static void Initialiser()
     {
-        if (_initialise) return;
+        InitialiserGlobal();
+        if (!string.IsNullOrEmpty(_utilisateurCourant))
+            InitialiserMetier();
+    }
 
-        AssurerDossier();
+    private static void InitialiserGlobal()
+    {
+        if (_globalInitialise) return;
 
-        using var conn = GetConnection();
+        using var conn = Ouvrir(ConnStrGlobal);
 
         using (var cmd = conn.CreateCommand())
         {
@@ -70,6 +101,16 @@ public static class Database
                 );";
             cmd.ExecuteNonQuery();
         }
+
+        _globalInitialise = true;
+    }
+
+    private static void InitialiserMetier()
+    {
+        if (_metierInitialise) return;
+        if (string.IsNullOrEmpty(_utilisateurCourant)) return;
+
+        using var conn = Ouvrir(ConnStrMetier);
 
         using (var cmd = conn.CreateCommand())
         {
@@ -135,7 +176,7 @@ public static class Database
 
         InitialiserParametresParDefaut(conn);
 
-        _initialise = true;
+        _metierInitialise = true;
     }
 
     private static void InitialiserParametresParDefaut(SqliteConnection conn)
@@ -155,9 +196,7 @@ public static class Database
             cmd.CommandText = "PRAGMA table_info(Personnel);";
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
-            {
                 colonnesExistantes.Add(reader.GetString(1));
-            }
         }
 
         var colonnesAajouter = new List<(string nom, string type)>
@@ -190,9 +229,7 @@ public static class Database
             cmd.CommandText = "PRAGMA table_info(EnregistrementPointage);";
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
-            {
                 colonnesExistantes.Add(reader.GetString(1));
-            }
         }
 
         var colonnesAajouter = new List<(string nom, string type)>
@@ -216,23 +253,22 @@ public static class Database
 
     public static void TesterConnexion() => Initialiser();
 
-    // ============ PARAMETRES ============
+    // ==================== PARAMETRES (base metier) ====================
 
     public static string GetParametre(string cle, string valeurDefaut = "")
     {
-        Initialiser();
+        InitialiserMetier();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
             "SELECT Valeur FROM Parametre WHERE Cle = @c", conn);
         cmd.Parameters.AddWithValue("@c", cle);
-
         var result = cmd.ExecuteScalar();
         return result?.ToString() ?? valeurDefaut;
     }
 
     public static void SetParametre(string cle, string valeur)
     {
-        Initialiser();
+        InitialiserMetier();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
             "INSERT INTO Parametre (Cle, Valeur) VALUES (@c, @v) " +
@@ -243,23 +279,22 @@ public static class Database
     }
 
     public static string GetNomEntreprise() => GetParametre("NomEntreprise", "Pointage");
-
     public static void SetNomEntreprise(string nom) => SetParametre("NomEntreprise", nom);
 
-    // ============ UTILISATEURS ============
+    // ==================== UTILISATEURS (base globale) ====================
 
     public static bool AucunUtilisateur()
     {
-        Initialiser();
-        using var conn = GetConnection();
+        InitialiserGlobal();
+        using var conn = GetConnectionGlobal();
         using var cmd = new SqliteCommand("SELECT COUNT(*) FROM Utilisateur", conn);
         return Convert.ToInt32(cmd.ExecuteScalar()) == 0;
     }
 
     public static bool NomUtilisateurExiste(string nomUtilisateur)
     {
-        Initialiser();
-        using var conn = GetConnection();
+        InitialiserGlobal();
+        using var conn = GetConnectionGlobal();
         using var cmd = new SqliteCommand(
             "SELECT COUNT(*) FROM Utilisateur WHERE NomUtilisateur = @u", conn);
         cmd.Parameters.AddWithValue("@u", nomUtilisateur);
@@ -269,11 +304,11 @@ public static class Database
     public static int CreerUtilisateur(string nomUtilisateur, string motDePasse,
         string nomComplet, string role = "operateur")
     {
-        Initialiser();
+        InitialiserGlobal();
         string sel = Securite.GenererSel();
         string hash = Securite.HacherMotDePasse(motDePasse, sel);
 
-        using var conn = GetConnection();
+        using var conn = GetConnectionGlobal();
         using var cmd = new SqliteCommand(
             "INSERT INTO Utilisateur (NomUtilisateur, MotDePasseHash, Sel, NomComplet, Role) " +
             "VALUES (@u, @h, @s, @n, @r); SELECT last_insert_rowid();", conn);
@@ -287,8 +322,8 @@ public static class Database
 
     public static Utilisateur? Authentifier(string nomUtilisateur, string motDePasse)
     {
-        Initialiser();
-        using var conn = GetConnection();
+        InitialiserGlobal();
+        using var conn = GetConnectionGlobal();
         using var cmd = new SqliteCommand(
             "SELECT Id, NomUtilisateur, MotDePasseHash, Sel, NomComplet, Role, DateCreation " +
             "FROM Utilisateur WHERE NomUtilisateur = @u", conn);
@@ -317,8 +352,8 @@ public static class Database
 
     public static bool ChangerMotDePasse(int utilisateurId, string ancienMotDePasse, string nouveauMotDePasse)
     {
-        Initialiser();
-        using var conn = GetConnection();
+        InitialiserGlobal();
+        using var conn = GetConnectionGlobal();
 
         string hashStocke, sel;
         using (var cmd = conn.CreateCommand())
@@ -351,8 +386,8 @@ public static class Database
 
     public static void MettreAJourNomComplet(int utilisateurId, string nomComplet)
     {
-        Initialiser();
-        using var conn = GetConnection();
+        InitialiserGlobal();
+        using var conn = GetConnectionGlobal();
         using var cmd = new SqliteCommand(
             "UPDATE Utilisateur SET NomComplet = @n WHERE Id = @id", conn);
         cmd.Parameters.AddWithValue("@n", nomComplet);
@@ -360,11 +395,11 @@ public static class Database
         cmd.ExecuteNonQuery();
     }
 
-    // ============ IMPORT / EXPORT BASE ============
+    // ==================== IMPORT / EXPORT (base metier) ====================
 
     public static void ExporterBase(string cheminDestination)
     {
-        Initialiser();
+        InitialiserMetier();
 
         var dossier = Path.GetDirectoryName(cheminDestination);
         if (!string.IsNullOrEmpty(dossier) && !Directory.Exists(dossier))
@@ -381,28 +416,28 @@ public static class Database
         if (!File.Exists(cheminSource))
             throw new FileNotFoundException("Fichier introuvable.", cheminSource);
 
-        _initialise = false;
+        _metierInitialise = false;
 
         AssurerDossier();
 
-        if (File.Exists(CheminDb))
-            File.Delete(CheminDb);
+        if (File.Exists(CheminDbMetier))
+            File.Delete(CheminDbMetier);
 
-        var walPath = CheminDb + "-wal";
-        var shmPath = CheminDb + "-shm";
+        var walPath = CheminDbMetier + "-wal";
+        var shmPath = CheminDbMetier + "-shm";
         if (File.Exists(walPath)) File.Delete(walPath);
         if (File.Exists(shmPath)) File.Delete(shmPath);
 
-        File.Copy(cheminSource, CheminDb, overwrite: true);
+        File.Copy(cheminSource, CheminDbMetier, overwrite: true);
 
-        Initialiser();
+        InitialiserMetier();
     }
 
-    // ============ PERSONNEL ============
+    // ==================== PERSONNEL (base metier) ====================
 
     public static List<Personnel> GetPersonnel()
     {
-        Initialiser();
+        InitialiserMetier();
         var liste = new List<Personnel>();
         using var conn = GetConnection();
 
@@ -431,7 +466,7 @@ public static class Database
 
     public static int AjouterPersonnel(Personnel p)
     {
-        Initialiser();
+        InitialiserMetier();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
             "INSERT INTO Personnel " +
@@ -451,7 +486,7 @@ public static class Database
 
     public static void ModifierPersonnel(Personnel p)
     {
-        Initialiser();
+        InitialiserMetier();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
             "UPDATE Personnel SET " +
@@ -473,7 +508,7 @@ public static class Database
 
     public static void SupprimerPersonnel(int id)
     {
-        Initialiser();
+        InitialiserMetier();
         using var conn = GetConnection();
         using var trx = conn.BeginTransaction();
         try
@@ -501,7 +536,7 @@ public static class Database
         }
     }
 
-    // ============ POINTAGE ============
+    // ==================== POINTAGE (base metier) ====================
 
     private static EnregistrementPointage LirePointage(SqliteDataReader reader)
     {
@@ -529,7 +564,7 @@ public static class Database
 
     public static List<EnregistrementPointage> GetPointagesDuJour(DateTime date)
     {
-        Initialiser();
+        InitialiserMetier();
         var liste = new List<EnregistrementPointage>();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
@@ -537,15 +572,13 @@ public static class Database
         cmd.Parameters.AddWithValue("@d", date.ToString("yyyy-MM-dd"));
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
-        {
             liste.Add(LirePointage(reader));
-        }
         return liste;
     }
 
     public static List<EnregistrementPointage> GetPointagesPeriode(DateTime debut, DateTime fin)
     {
-        Initialiser();
+        InitialiserMetier();
         var liste = new List<EnregistrementPointage>();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
@@ -556,9 +589,7 @@ public static class Database
 
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
-        {
             liste.Add(LirePointage(reader));
-        }
         return liste;
     }
 
@@ -567,7 +598,7 @@ public static class Database
         TimeSpan? apresMidiArrivee, TimeSpan? apresMidiSortie,
         string? observation)
     {
-        Initialiser();
+        InitialiserMetier();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
             "INSERT INTO EnregistrementPointage " +
@@ -591,7 +622,7 @@ public static class Database
 
     public static void SupprimerPointage(int personnelId, DateTime date)
     {
-        Initialiser();
+        InitialiserMetier();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
             "DELETE FROM EnregistrementPointage WHERE PersonnelId = @pid AND DatePointage = @d", conn);
@@ -602,7 +633,7 @@ public static class Database
 
     public static Dictionary<int, int> GetStatistiquesMois(int annee, int mois)
     {
-        Initialiser();
+        InitialiserMetier();
         var stats = new Dictionary<int, int>();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
@@ -614,15 +645,13 @@ public static class Database
         cmd.Parameters.AddWithValue("@m", mois.ToString("D2"));
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
-        {
             stats[reader.GetInt32(0)] = reader.GetInt32(1);
-        }
         return stats;
     }
 
     public static HashSet<int> GetJoursPointesDuMois(int personnelId, int annee, int mois)
     {
-        Initialiser();
+        InitialiserMetier();
         var jours = new HashSet<int>();
         using var conn = GetConnection();
         using var cmd = new SqliteCommand(
@@ -636,15 +665,13 @@ public static class Database
         cmd.Parameters.AddWithValue("@m", mois.ToString("D2"));
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
-        {
             jours.Add(reader.GetInt32(0));
-        }
         return jours;
     }
 
     public static List<BilanPersonnel> GetBilanPersonnel(DateTime debut, DateTime fin)
     {
-        Initialiser();
+        InitialiserMetier();
         var liste = new List<BilanPersonnel>();
         using var conn = GetConnection();
 
@@ -729,7 +756,7 @@ public static class Database
 
     public static List<BilanJour> GetBilanJours(DateTime debut, DateTime fin)
     {
-        Initialiser();
+        InitialiserMetier();
         var liste = new List<BilanJour>();
         using var conn = GetConnection();
 
